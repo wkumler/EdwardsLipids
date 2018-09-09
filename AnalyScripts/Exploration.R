@@ -28,7 +28,9 @@ sdata <- LOBdata %>%
 
 ggplot(data = sdata, aes(x=Orbi_num, y=`Total intensity`, color=species)) +geom_point() +
   theme(axis.text.x = element_text(angle = 90, hjust = 1)) + 
-  facet_wrap(~lipid_class, scales = "free_y")
+  facet_wrap(~lipid_class, scales = "free_y") +
+  ggtitle("All lipids and their values")
+ggsave("AllLipids.png", device = "png", path = "../Images/")
 
 
 #Irrelevant ones (only one of each type)
@@ -38,8 +40,9 @@ rdata <- filter(sdata, lipid_class=="IP_DAG")
 rdata <- filter(rdata, Orbi_num!="Orbi_1287")
 ggplot(data = rdata, aes(x=Orbi_num, y=`Total intensity`, color=species)) +geom_point() +
   theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
-  facet_wrap(~species, scales = "free_y")
-
+  facet_wrap(~species, scales = "free_y") + 
+  ggtitle("Only lipids with 1+ compounds per species")
+ggsave("InterestLipids.png", device = "png", path = "../Images/")
 
 #####Doing ODV on them#####
 ODV <- function(spec) {
