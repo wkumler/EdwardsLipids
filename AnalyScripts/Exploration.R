@@ -5,6 +5,7 @@ setwd("AnalyScripts")
 library(dplyr)
 library(ggplot2)
 library(MBA)
+library(reshape2)
 
 LOBdata <- read.csv("../Data/Clean_Complete.csv", stringsAsFactors = F)
 
@@ -50,7 +51,7 @@ ODV <- function(spec) {
   #Interpolating and redrawing
   surf_i <- mba.surf(long_samples_i, no.X = 300, no.Y = 300, extend = T)
   dimnames(surf_i$xyz.est$z) <- list(surf_i$xyz.est$x, surf_i$xyz.est$y)
-  surf_i <- reshape2::melt(surf_i$xyz.est$z, varnames = c('Station', 'Depth'), value.name = 'total')
+  surf_i <- melt(surf_i$xyz.est$z, varnames = c('Station', 'Depth'), value.name = 'total')
   
   gp <- ggplot(data = surf_i, aes(x = Station, y = Depth)) +
     geom_raster(aes(fill = total)) +
