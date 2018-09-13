@@ -4,10 +4,11 @@ library(dplyr)
 library(ggplot2)
 library(MBA)
 library(reshape2)
+source("AnalyScripts/SimpleODV.R")
 
 LOBdata <- read.csv("Data/Clean_Complete.csv", stringsAsFactors = F)
 
-#####Looking at structure of the IP-DAGs#####
+# Data structure ----
 lipid.classes <- unique(LOBdata$lipid_class)
 lp <- list()
 for(i in 1:length(lipid.classes)) {
@@ -19,24 +20,29 @@ for(i in 1:length(lipid.classes)) {
 names(lp) <- lipid.classes
 data.frame(lp)
 
-#####Looking at the data via ggplot#####
-sdata <- LOBdata %>% 
+
+# Plotting the data via ggplot ----
+lipids.grouped <- LOBdata %>% 
   group_by(Orbi_num, lipid_class, species) %>% 
   summarize("Total intensity"=sum(intensity))
 
-ggplot(data = sdata, aes(x=Orbi_num, y=`Total intensity`, color=species)) +geom_point() +
+ggplot(data = lipids.grouped, aes(x=Orbi_num, y=`Total intensity`, color=species)) +geom_point() +
   theme(axis.text.x = element_text(angle = 90, hjust = 1)) + 
   facet_wrap(~lipid_class, scales = "free_y") +
   ggtitle("All lipids and their values")
 ggsave("AllLipids.png", device = "png", path = "Images/")
 
 
+ODV()
+
+
+
 #Irrelevant ones (only one of each type)
 irr <- c("FFA","hapCER", "hGSL", "plastoquinone_9OH", "PUA", "sterol", "TAG", "DNPPE")
 
-rdata <- filter(sdata, lipid_class=="IP_DAG")
-rdata <- filter(rdata, Orbi_num!="Orbi_1287")
-ggplot(data = rdata, aes(x=Orbi_num, y=`Total intensity`, color=species)) +geom_point() +
+IPDAG.data <- filter(lipids.grouped, lipid_class=="IP_DAG")
+IPDAG.data <- filter(IPDAG.data, Orbi_num!="Orbi_1287")
+ggplot(data = IPDAG.data, aes(x=Orbi_num, y=`Total intensity`, color=species)) +geom_point() +
   theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
   facet_wrap(~species, scales = "free_y") + 
   ggtitle("Only lipids with 1+ compounds per species")
