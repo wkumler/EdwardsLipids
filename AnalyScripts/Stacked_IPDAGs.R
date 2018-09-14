@@ -84,15 +84,17 @@ stacked_gp <- norm.rel.IPDAGs %>%
   #guides(fill = guide_legend(nrow = 1)) +
   ylab("% of total IP-DAG species") +
   xlab("Station Number") + 
+  theme_bw() +
   theme(legend.title=element_blank(), legend.position = "bottom",
-      axis.text = element_text(size = 24, face = "bold", color="black"),
-      axis.title = element_text(size = 24, face = "bold"),
+      axis.text = element_text(size = 18, face = "bold", color="black"),
+      axis.title = element_text(size = 18, face = "bold"),
       #strip.background =element_rect(fill=c("#F8766D", "#00BFC4")),
-      legend.text = element_text(size = 24, face = "bold")) +
+      legend.text = element_text(size = 14)) +
   scale_fill_discrete(breaks = c(legend.order),
-                      labels = paste0(" ", legend.order, "     "))
+                      labels = paste0(" ", legend.order, "   "))
 
 #Save progress
+stacked_gp
 ggsave(filename = "Stacked_IPDAGs.png", plot = stacked_gp, device = "png", 
        path = "Images", width = 8, height = 8, units = "in")
 
@@ -124,17 +126,18 @@ ODV <- function(data, title, x.axis="n") {
                  binwidth = max(surf_i$total)/8, 
                  colour = "black", 
                  alpha = 0.2, 
-                 lwd = 1.5) +
+                 lwd = 1) +
     scale_y_reverse() +
     scale_x_continuous(breaks=long_samples_i$Station,
                        labels=paste("Station", long_samples_i$Station)) +
+    theme_bw() +
     theme(axis.text.x = element_text(angle = 315, hjust = 0), 
       axis.title.x = element_blank(), 
       legend.title=element_blank(), 
-      axis.text = element_text(size = 24, face = "bold", color="black"),
-      axis.title = element_text(size = 24, face = "bold"),
-      legend.text = element_text(size = 24, face = "bold"),
-      legend.position = "none", plot.title = element_text(size = 24)) +
+      axis.text = element_text(size = 18, color="black"),
+      axis.title = element_text(size = 18, face = "bold"),
+      legend.text = element_text(size = 18, face = "bold"),
+      legend.position = "none", plot.title = element_text(size = 18)) +
     ggtitle(title)
     
   
@@ -155,3 +158,4 @@ PG_gp <- ODV(PG_df, x.axis = "y", title = "PG intensity")
 layout_matrix <- cbind(1, c(2,2,3,3,3))
 
 grid.arrange(stacked_gp, SQDG_gp, PG_gp, layout_matrix = layout_matrix)
+
