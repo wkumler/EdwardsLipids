@@ -71,8 +71,11 @@ classify.MvP <- function(station.number) {
   }
 }
 norm.rel.IPDAGs <- mutate(norm.rel.IPDAGs, "Location"=classify.MvP(Station))
+ordered.IPDAGs <- list()
 
 legend.order <- c("DGCC", "PC", "DGDG", "PE", "DGTS_DGTA", "PG", "MGDG", "SQDG")
+legend.values <- c("darkgoldenrod1", "blue2", "firebrick1", "blue3", 
+                   "darkgoldenrod3", "blue4", "firebrick2", "firebrick3")
 
 stacked_gp <- norm.rel.IPDAGs %>% 
   group_by(Station) %>%
@@ -89,9 +92,10 @@ stacked_gp <- norm.rel.IPDAGs %>%
       axis.text = element_text(size = 18, face = "bold", color="black"),
       axis.title = element_text(size = 18, face = "bold"),
       #strip.background =element_rect(fill=c("#F8766D", "#00BFC4")),
-      legend.text = element_text(size = 14)) +
-  scale_fill_discrete(breaks = c(legend.order),
-                      labels = paste0(" ", legend.order, "   "))
+      legend.text = element_text(size = 16)) +
+  scale_fill_manual(breaks = c(legend.order),
+                      labels = paste0(" ", legend.order, "   "),
+                      values = legend.values)
 
 #Save progress
 stacked_gp
@@ -137,8 +141,9 @@ ODV <- function(data, title, x.axis="n") {
       axis.text = element_text(size = 18, color="black"),
       axis.title = element_text(size = 18, face = "bold"),
       legend.text = element_text(size = 18, face = "bold"),
-      legend.position = "none", plot.title = element_text(size = 18),
-      plot.margin = unit(c(0,0.5,0,0), "in")) +
+      legend.position = "none", 
+      plot.title = element_text(size = 18),
+      plot.margin = unit(c(0.5,0.5,0,0), "in")) +
     ggtitle(title)
     
   
@@ -151,14 +156,49 @@ ODV <- function(data, title, x.axis="n") {
   
 }
 
+# And plot the whole thing ----
+
 SQDG_df <- filter(IPDAGs, species=="SQDG")
 SQDG_gp <- ODV(SQDG_df, title = "SQDG intensity", x.axis = "n")
 PG_df <- filter(IPDAGs, species=="PG")
 PG_gp <- ODV(PG_df, x.axis = "y", title = "PG intensity")
 
-layout_matrix <- cbind(1, c(2,2,3,3,3))
-
-grid.arrange(stacked_gp, SQDG_gp, PG_gp, layout_matrix = layout_matrix)
-
-ggsave(filename = "Stacked_IPDAG_complete.png", plot = last_plot(), device = "png",
+layout_matrix_vert <- cbind(1, c(2,2,2,3,3,3,3))
+gpfinal <- grid.arrange(stacked_gp, SQDG_gp, PG_gp, layout_matrix = layout_matrix_vert)
+ggsave(filename = "Stacked_IPDAG_complete.png", plot = gpfinal, device = "png",
        path = "Images", width = 14, height = 8, units = "in")
+
+
+
+
+# Try a horizontal format? ----
+# stacked_gp_horiz <- norm.rel.IPDAGs %>% 
+#   group_by(Station) %>%
+#   ggplot(aes(x=Station, y=proportion, fill=species)) + 
+#   geom_bar(stat = "identity") +
+#   geom_bar(color="black", stat = "identity", show.legend = F) + #second call to
+#   #geom_bar to draw outlines without outlining legend boxes
+#   facet_wrap(~Location, scales = "free_x") + #hella clever, thanks internet
+#   #guides(fill = guide_legend(nrow = 1)) +
+#   ylab("IP-DAG %") +
+#   xlab("Station Number") + 
+#   theme_bw() +
+#   theme(legend.title=element_blank(), legend.position = "right",
+#         axis.text = element_text(size = 18, face = "bold", color="black"),
+#         axis.title = element_text(size = 18, face = "bold"),
+#         #strip.background =element_rect(fill=c("#F8766D", "#00BFC4")),
+#         legend.text = element_text(size = 16)) +
+#   scale_fill_discrete(breaks = c(legend.order),
+#                       labels = paste0(" ", legend.order, "   "))
+# 
+# SQDG_df <- filter(IPDAGs, species=="SQDG")
+# SQDG_gp <- ODV(SQDG_df, title = "SQDG intensity", x.axis = "y")
+# PG_df <- filter(IPDAGs, species=="PG")
+# PG_gp <- ODV(PG_df, x.axis = "y", title = "PG intensity")
+# 
+# 
+# layout_matrix_horiz <- rbind(1, c(2,3))
+# gpfinal <- grid.arrange(stacked_gp_horiz, SQDG_gp, PG_gp, layout_matrix = layout_matrix_horiz)
+# ggsave(filename = "Stacked_IPDAG_complete_horiz.png", plot = gpfinal, device = "png",
+#        path = "Images", width = 14, height = 8, units = "in")
+# 
