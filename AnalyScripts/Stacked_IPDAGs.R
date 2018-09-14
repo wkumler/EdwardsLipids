@@ -129,7 +129,7 @@ ODV <- function(data, title, x.axis="n") {
                  lwd = 1) +
     scale_y_reverse() +
     scale_x_continuous(breaks=long_samples_i$Station,
-                       labels=paste("Station", long_samples_i$Station)) +
+                       labels=paste("St. ", long_samples_i$Station)) +
     theme_bw() +
     theme(axis.text.x = element_text(angle = 315, hjust = 0), 
       axis.title.x = element_blank(), 
@@ -137,7 +137,8 @@ ODV <- function(data, title, x.axis="n") {
       axis.text = element_text(size = 18, color="black"),
       axis.title = element_text(size = 18, face = "bold"),
       legend.text = element_text(size = 18, face = "bold"),
-      legend.position = "none", plot.title = element_text(size = 18)) +
+      legend.position = "none", plot.title = element_text(size = 18),
+      plot.margin = unit(c(0,0.5,0,0), "in")) +
     ggtitle(title)
     
   
@@ -159,3 +160,5 @@ layout_matrix <- cbind(1, c(2,2,3,3,3))
 
 grid.arrange(stacked_gp, SQDG_gp, PG_gp, layout_matrix = layout_matrix)
 
+ggsave(filename = "Stacked_IPDAG_complete.png", plot = last_plot(), device = "png",
+       path = "Images", width = 14, height = 8, units = "in")
