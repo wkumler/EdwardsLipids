@@ -52,10 +52,10 @@ LOBdata <- read.csv("Data/Clean_Complete.csv", stringsAsFactors = F)
 #Apply the function ----
 ODV(LOBdata)
 
-PG_data <- LOBdata %>% 
-  filter(species == "PG")
-ODV(PG_data)
-
-shal_PG_data <- PG_data %>%
-  filter(Depth < 10)
-ODV(shal_PG_data)
+# PG_data <- LOBdata %>% 
+#   filter(species == "PG")
+# ODV(PG_data)
+# 
+# shal_PG_data <- PG_data %>%
+#   filter(Depth < 10)
+# ODV(shal_PG_data)
