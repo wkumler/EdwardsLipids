@@ -8,7 +8,10 @@
 # Startup things ----
 library(dplyr)
 library(ggplot2)
-source("AnalyScripts/SimpleODV.R")
+library(MBA)
+library(reshape2)
+library(grid)
+library(gridExtra)
 
 LOBdata <- read.csv("Data/Clean_Complete.csv", stringsAsFactors = F)
 
@@ -45,7 +48,7 @@ rel.IPDAGs %>% group_by(Station) %>%
   ggplot(aes(x=Station, y=total_intensity)) + 
   geom_bar(aes(fill=species), stat = "identity")
 
-#Okay, but normalize to 100% ----
+# Okay, but normalize to 100% ----
 norm.rel.IPDAGs <- rel.IPDAGs %>%
   group_by(Station) %>%
   mutate(proportion=(total_intensity/sum(total_intensity))*100)
@@ -69,23 +72,86 @@ classify.MvP <- function(station.number) {
 }
 norm.rel.IPDAGs <- mutate(norm.rel.IPDAGs, "Location"=classify.MvP(Station))
 
-norm.rel.IPDAGs %>% group_by(Station) %>%
+legend.order <- c("DGCC", "PC", "DGDG", "PE", "DGTS_DGTA", "PG", "MGDG", "SQDG")
+
+stacked_gp <- norm.rel.IPDAGs %>% 
+  group_by(Station) %>%
   ggplot(aes(x=Station, y=proportion, fill=species)) + 
   geom_bar(stat = "identity") +
   geom_bar(color="black", stat = "identity", show.legend = F) + #second call to
     #geom_bar to draw outlines without outlining legend boxes
   facet_wrap(~Location, scales = "free_x") + #hella clever, thanks internet
-  guides(fill = guide_legend(nrow = 1)) +
-  ylab("Relative proportion of IP-DAG species") +
+  #guides(fill = guide_legend(nrow = 1)) +
+  ylab("% of total IP-DAG species") +
   xlab("Station Number") + 
   theme(legend.title=element_blank(), legend.position = "bottom",
-      axis.text = element_text(size = 32, face = "bold"),
-      axis.title = element_text(size = 32, face = "bold"),
-      legend.text = element_text(size = 32, face = "bold")) +
-  scale_fill_discrete(breaks = c("DGDG", "DGTS_DGTA", "MGDG", "PC", "PE",
-                                 "PG", "SQDG", "DGCC"),
-                      labels = paste0(" ", c("DGDG", "DGTS/DGTA", "MGDG", "PC", 
-                                            "PE", "PG", "SQDG", "DGCC"), "     "))
+      axis.text = element_text(size = 24, face = "bold", color="black"),
+      axis.title = element_text(size = 24, face = "bold"),
+      #strip.background =element_rect(fill=c("#F8766D", "#00BFC4")),
+      legend.text = element_text(size = 24, face = "bold")) +
+  scale_fill_discrete(breaks = c(legend.order),
+                      labels = paste0(" ", legend.order, "     "))
 
-ggsave(filename = "Stacked_IPDAGs.png", device = "png", path = "Images", 
-       width = 8, height = 8, units = "in")
+#Save progress
+ggsave(filename = "Stacked_IPDAGs.png", plot = stacked_gp, device = "png", 
+       path = "Images", width = 8, height = 8, units = "in")
+
+# Add ODV plots ----
+ODV <- function(data, title, x.axis="n") {
+  #Group and sum all samples with the same station and depth
+  long_samples_i <- data %>% 
+    group_by(Station, Depth) %>%
+    summarize("total" = sum(intensity))
+  
+  #Interpolating via MBA
+  surf_i <- mba.surf(long_samples_i, no.X = 300, no.Y = 300, extend = T)
+  dimnames(surf_i$xyz.est$z) <- list(surf_i$xyz.est$x, surf_i$xyz.est$y)
+  surf_i <- melt(surf_i$xyz.est$z, varnames = c('Station', 'Depth'), 
+                 value.name = 'total')
+  if(x.axis=="y"){
+    x.axis
+  }
+  
+  #Drawing
+  gp <- ggplot(data = surf_i, aes(x = Station, y = Depth)) +
+    geom_raster(aes(fill = total)) +
+    scale_fill_gradientn(colours = rev(rainbow(5))) +
+    geom_point(data = long_samples_i, 
+               alpha = 0.2, 
+               aes(x=Station, y=Depth),
+               cex = 2) +
+    geom_contour(aes(z = total), 
+                 binwidth = max(surf_i$total)/8, 
+                 colour = "black", 
+                 alpha = 0.2, 
+                 lwd = 1.5) +
+    scale_y_reverse() +
+    scale_x_continuous(breaks=long_samples_i$Station,
+                       labels=paste("Station", long_samples_i$Station)) +
+    theme(axis.text.x = element_text(angle = 315, hjust = 0), 
+      axis.title.x = element_blank(), 
+      legend.title=element_blank(), 
+      axis.text = element_text(size = 24, face = "bold", color="black"),
+      axis.title = element_text(size = 24, face = "bold"),
+      legend.text = element_text(size = 24, face = "bold"),
+      legend.position = "none", plot.title = element_text(size = 24)) +
+    ggtitle(title)
+    
+  
+  if(x.axis=="y"){
+    return(gp)
+  } else {
+    gp <- gp +theme(axis.ticks = element_blank(), axis.text.x = element_blank())
+    return(gp)
+  }
+  
+}
+
+SQDG_df <- filter(IPDAGs, species=="SQDG")
+SQDG_gp <- ODV(SQDG_df, title = "SQDG intensity", x.axis = "n")
+PG_df <- filter(IPDAGs, species=="PG")
+PG_gp <- ODV(PG_df, x.axis = "y", title = "PG intensity")
+
+layout_matrix <- cbind(1, c(2,2,3,3,3))
+
+grid.arrange(stacked_gp, SQDG_gp, PG_gp, layout_matrix = layout_matrix)
