@@ -71,13 +71,17 @@ classify.MvP <- function(station.number) {
   }
 }
 norm.rel.IPDAGs <- mutate(norm.rel.IPDAGs, "Location"=classify.MvP(Station))
-ordered.IPDAGs <- list()
+ordered.IPDAGs <- norm.rel.IPDAGs
+specs <- c("DGTS_DGTA", "DGCC", "MGDG", "DGDG", "SQDG", 
+           "PC", "PE", "PG")
+ordered.IPDAGs$species <- factor(ordered.IPDAGs$species, levels = specs)
 
-legend.order <- c("DGCC", "PC", "DGDG", "PE", "DGTS_DGTA", "PG", "MGDG", "SQDG")
-legend.values <- c("darkgoldenrod1", "blue2", "firebrick1", "blue3", 
-                   "darkgoldenrod3", "blue4", "firebrick2", "firebrick3")
+proper.colors <- c("darkgoldenrod1", "darkgoldenrod3", "#41ae76", "#238b45", 
+                    "#006d2c", "#3690c0", "#0570b0", "#045a8d")
+proper.colors <- c("#238b45", "#006d2c", "#3690c0", "#0570b0", "#045a8d",
+                   "mediumpurple3", "#6E56AA", "mediumpurple4")
 
-stacked_gp <- norm.rel.IPDAGs %>% 
+stacked_gp <- ordered.IPDAGs %>% 
   group_by(Station) %>%
   ggplot(aes(x=Station, y=proportion, fill=species)) + 
   geom_bar(stat = "identity") +
@@ -93,9 +97,9 @@ stacked_gp <- norm.rel.IPDAGs %>%
       axis.title = element_text(size = 18, face = "bold"),
       #strip.background =element_rect(fill=c("#F8766D", "#00BFC4")),
       legend.text = element_text(size = 16)) +
-  scale_fill_manual(breaks = c(legend.order),
-                      labels = paste0(" ", legend.order, "   "),
-                      values = legend.values)
+  scale_fill_manual(breaks = specs,
+                      labels = paste0(" ", specs, "   "),
+                      values = proper.colors)
 
 #Save progress
 stacked_gp
