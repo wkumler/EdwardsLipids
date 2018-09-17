@@ -78,8 +78,8 @@ ordered.IPDAGs$species <- factor(ordered.IPDAGs$species, levels = specs)
 
 proper.colors <- c("darkgoldenrod1", "darkgoldenrod3", "#41ae76", "#238b45", 
                     "#006d2c", "#3690c0", "#0570b0", "#045a8d")
-proper.colors <- c("#238b45", "#006d2c", "#3690c0", "#0570b0", "#045a8d",
-                   "mediumpurple3", "#6E56AA", "mediumpurple4")
+# proper.colors <- c("#238b45", "#006d2c", "#3690c0", "#0570b0", "#045a8d",
+#                    "mediumpurple3", "#6E56AA", "mediumpurple4")
 
 stacked_gp <- ordered.IPDAGs %>% 
   group_by(Station) %>%
