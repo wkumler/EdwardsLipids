@@ -17,10 +17,8 @@ register(bpstart(MulticoreParam(1)))
 # General settings ----
 
 #User: define locations of data files and database(s)
-working_dir <- "/media/windows/Users/willi/Documents/Berkeley/Elab/SURFIN"
-setwd(working_dir)
 
-data_source <- "/media/wkumler/TheVault/6a_TLE_ESI" #Specify where the mzXML files are stored
+data_source <- "/media/wkumler/TheVault/6a_TLE_ESI_2" #Specify where the mzXML files are stored
 
 mzXMLdirs <- c("/mzXML_pos", "/mzXML_neg") # Specify the names of the sub-folders where the two polarities were extracted
 
@@ -168,14 +166,15 @@ if (!exists("mzXMLdirs")) {
 mzXMLfiles.raw = list.files(chosenFileSubset, recursive = TRUE, full.names = TRUE)
 
 # verify the ion mode of the data in these files
-#subset.polarity = getSubsetIonMode(mzXMLfiles.raw)
-subset.polarity = "positive" #Note the hack here for the sake of expediency
+subset.polarity = getSubsetIonMode(mzXMLfiles.raw)
+#subset.polarity = "positive" #Note the hack here for the sake of expediency
 
 # provide some feedback to user
 print(paste0("Loaded ",length(mzXMLfiles.raw)," mzXML files. These files contain ",
              subset.polarity," ion mode data. Raw dataset consists of:"))
 
 print(mzXMLfiles.raw)
+mzXMLfiles <- mzXMLfiles.raw
 
 # Create xcmsSet ----
 
