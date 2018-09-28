@@ -3,22 +3,20 @@
 # Setup things ----
 
 library(tools)
+library(BiocParallel)
 library(xcms)
 library(CAMERA)
 library(rsm)
-library(parallel)
 library(IPO)
-library(snow)
-library(BiocParallel)
 library(LOBSTAHS)
 
-register(bpstart(MulticoreParam(1)))
+useful_cores <- detectCores()-1
+core_param <- MulticoreParam(useful_cores)
+register(core_param)
 
 # General settings ----
 
 #User: define locations of data files and database(s)
-working_dir <- "/media/windows/Users/willi/Documents/Berkeley/Elab/SURFIN"
-setwd(working_dir)
 
 data_source <- "/media/wkumler/TheVault/6a_TLE_ESI" #Specify where the mzXML files are stored
 
@@ -67,52 +65,42 @@ readyesno = function(prompttext) {
 # verifyFileIonMode: return the ion mode of data in a particular mzXML file, 
 # by examining "polarity" attribute of each scan in the file
 verifyFileIonMode = function(mzXMLfile) {
-  
   rawfile = xcmsRaw(mzXMLfile) # create an xcmsraw object out of the first file
-  
   # determine ion mode by examining identifier attached to scan events
-  
   if (table(rawfile@polarity)["negative"]==0 & (table(rawfile@polarity)["positive"]==length(rawfile@scanindex))) { 
-    
     filepolarity = 1 # positive
-    
   } else if (table(rawfile@polarity)["positive"]==0 & (table(rawfile@polarity)["negative"]==length(rawfile@scanindex))) { 
-    
     filepolarity = -1 # negative
-    
   } else if (table(rawfile@polarity)["positive"]>=1 & table(rawfile@polarity)["negative"]>=1) { 
-    
     stop("At least one file in the current dataset contains scans of more than one ion mode. 
          Please ensure data for different ion modes have been extracted into separate files. Stopping...") 
-    
   } else if (table(rawfile@polarity)["positive"]==0 & table(rawfile@polarity)["negative"]==0) {
-    
     stop("Can't determine ion mode of data in the first file. Check manner in which files were converted. Stopping...") 
-    
   }
-  
   filepolarity
-  
 }
 
 # getSubsetIonMode: return the ion mode of a subset of files, using sapply of verifyFileIonMode
-getSubsetIonMode = function(mzXMLfilelist) {
-  
-  ionmodecount = sum(sapply(mzXMLfilelist, verifyFileIonMode)) # get sum of ion mode indicators for the files in the subset
-  
+getSubsetIonModeParallel = function(mzXMLfilelist) {
+  bpresult <- bplapply(mzXMLfilelist, verifyFileIonMode) # get sum of ion mode indicators for the files in the subset
+  ionmodecount = sum(unlist(bpresult))
   if (ionmodecount==length(mzXMLfilelist)) { # can conclude that all files contain positive mode data
-    
     subset.polarity = "positive"
-    
   } else if (ionmodecount==-length(mzXMLfilelist)) { # can conclude that all files contain negative mode data
-    
     subset.polarity = "negative"
-    
   }
-  
   subset.polarity
-  
 }
+getSubsetIonMode = function(mzXMLfilelist) {
+  ionmodecount <- sum(sapply(mzXMLfilelist, verifyFileIonMode)) # get sum of ion mode indicators for the files in the subset
+  if (ionmodecount==length(mzXMLfilelist)) { # can conclude that all files contain positive mode data
+    subset.polarity = "positive"
+  } else if (ionmodecount==-length(mzXMLfilelist)) { # can conclude that all files contain negative mode data
+    subset.polarity = "negative"
+  }
+  subset.polarity
+}
+
 
 # selectXMLSubDir: allows user to choose which subset of files to process
 selectXMLSubDir = function(mzXMLdirList) {
@@ -158,24 +146,23 @@ genTimeStamp = function () {
 # Load in mzXML files ----
 # check to make sure user has specified at least something in mzXMLdirs
 if (!exists("mzXMLdirs")) {
-  
   stop("User has not specified any directories containing mzXML files. Specify a value for mzXMLdirs.")
-  
 }
 
-
 # load selected subset for processing
-mzXMLfiles.raw = list.files(chosenFileSubset, recursive = TRUE, full.names = TRUE)
+mzXML_files = list.files(chosenFileSubset, recursive = TRUE, full.names = TRUE)
 
 # verify the ion mode of the data in these files
-#subset.polarity = getSubsetIonMode(mzXMLfiles.raw)
-subset.polarity = "positive" #Note the hack here for the sake of expediency
+system.time(subset.polarity.parallel <- getSubsetIonModeParallel(mzXML_files))
+#78, 96 total seconds
+# system.time(subset.polarity <- getSubsetIonMode(mzXML_files))
+# #227, 180 total seconds
+# #subset.polarity = "positive" #Note the hack here for the sake of expediency
 
 # provide some feedback to user
-print(paste0("Loaded ",length(mzXMLfiles.raw)," mzXML files. These files contain ",
+print(paste0("Loaded ",length(mzXML_files)," mzXML files. These files contain ",
              subset.polarity," ion mode data. Raw dataset consists of:"))
-
-print(mzXMLfiles.raw)
+print(mzXML_files)
 
 # Create xcmsSet ----
 
@@ -192,13 +179,12 @@ centW.mzCenterFun = c("wMean")
 centW.verbose.columns = TRUE
 centW.integrate = 1
 centW.profparam = list(step=0.01) 
-centW.nSlaves = 4 
 
 # Create xcmsSet using selected settings
-print(paste0("Creating xcmsSet object from ",length(mzXMLfiles),
+print(paste0("Creating xcmsSet object from ",length(mzXML_files),
              " mzXML files remaining in dataset using specified settings..."))
-
-xset_centWave = xcmsSet(mzXMLfiles,
+system.time(
+xset_centWave <- xcmsSet(mzXML_files,
                         method = "centWave",
                         profparam = centW.profparam,
                         ppm = centW.ppm,
@@ -211,8 +197,27 @@ xset_centWave = xcmsSet(mzXMLfiles,
                         integrate = centW.integrate,
                         prefilter = centW.prefilter,
                         mzCenterFun = centW.mzCenterFun,
-                        #                 sleep = centW.sleep
-                        BPPARAM = bpparam()
+                        sleep = centW.sleep
+)
+)
+
+system.time(
+  xset_centWave_par <- xcmsSet(mzXML_files,
+                           method = "centWave",
+                           profparam = centW.profparam,
+                           ppm = centW.ppm,
+                           peakwidth = c(centW.min_peakwidth,centW.max_peakwidth),
+                           fitgauss = centW.fitgauss,
+                           noise = centW.noise,
+                           mzdiff = centW.mzdiff,
+                           verbose.columns = centW.verbose.columns,
+                           snthresh = centW.snthresh,
+                           integrate = centW.integrate,
+                           prefilter = centW.prefilter,
+                           mzCenterFun = centW.mzCenterFun,
+                           #                 sleep = centW.sleep
+                           BPPARAM = core_param
+  )
 )
 
 print(paste0("xcmsSet object xset_centWave created:"))
@@ -250,7 +255,6 @@ density.sleep = 0
 loess.plottype = "mdevden" # none
 
 # Group for the first time
-
 xset_gr = group(xset_centWave,
                 method = "density",
                 bw = density.bw,
@@ -289,7 +293,6 @@ rm("xset_gr.ret")
 
 # Fill in missing peaks ----
 # Begin peak filling
-register(bpstart(MulticoreParam(1)))
 
 load("xset_gr.ret.rg")
 xset_gr.ret.rg.fill = fillPeaks.chrom(xset_gr.ret.rg, BPPARAM = bpparam())

@@ -18,7 +18,7 @@ register(bpstart(MulticoreParam(1)))
 
 #User: define locations of data files and database(s)
 
-data_source <- "/media/wkumler/TheVault/6a_TLE_ESI_2" #Specify where the mzXML files are stored
+data_source <- "/media/wkumler/TheVault/6a_TLE_ESI" #Specify where the mzXML files are stored
 
 mzXMLdirs <- c("/mzXML_pos", "/mzXML_neg") # Specify the names of the sub-folders where the two polarities were extracted
 
