@@ -3,7 +3,8 @@
 # Setup things ----
 
 library(tools)
-library(BiocParallel)
+library(BiocParallel) #For xcms
+library(Rmpi) #For CAMERA
 library(xcms)
 library(CAMERA)
 library(rsm)
@@ -153,11 +154,8 @@ if (!exists("mzXMLdirs")) {
 mzXML_files = list.files(chosenFileSubset, recursive = TRUE, full.names = TRUE)
 
 # verify the ion mode of the data in these files
-system.time(subset.polarity.parallel <- getSubsetIonModeParallel(mzXML_files))
-#78, 96 total seconds
-# system.time(subset.polarity <- getSubsetIonMode(mzXML_files))
-# #227, 180 total seconds
-# #subset.polarity = "positive" #Note the hack here for the sake of expediency
+subset.polarity <- getSubsetIonModeParallel(mzXML_files)
+# subset.polarity = "positive" #Note the hack here for the sake of expediency
 
 # provide some feedback to user
 print(paste0("Loaded ",length(mzXML_files)," mzXML files. These files contain ",
@@ -165,7 +163,6 @@ print(paste0("Loaded ",length(mzXML_files)," mzXML files. These files contain ",
 print(mzXML_files)
 
 # Create xcmsSet ----
-
 centW.min_peakwidth = 10
 centW.max_peakwidth = 45
 centW.ppm = 2.5
@@ -183,52 +180,28 @@ centW.profparam = list(step=0.01)
 # Create xcmsSet using selected settings
 print(paste0("Creating xcmsSet object from ",length(mzXML_files),
              " mzXML files remaining in dataset using specified settings..."))
-system.time(
-xset_centWave <- xcmsSet(mzXML_files,
-                        method = "centWave",
-                        profparam = centW.profparam,
-                        ppm = centW.ppm,
-                        peakwidth = c(centW.min_peakwidth,centW.max_peakwidth),
-                        fitgauss = centW.fitgauss,
-                        noise = centW.noise,
-                        mzdiff = centW.mzdiff,
-                        verbose.columns = centW.verbose.columns,
-                        snthresh = centW.snthresh,
-                        integrate = centW.integrate,
-                        prefilter = centW.prefilter,
-                        mzCenterFun = centW.mzCenterFun,
-                        sleep = centW.sleep
+xset_centWave_par <- xcmsSet(mzXML_files,
+                         method = "centWave",
+                         profparam = centW.profparam,
+                         ppm = centW.ppm,
+                         peakwidth = c(centW.min_peakwidth,centW.max_peakwidth),
+                         fitgauss = centW.fitgauss,
+                         noise = centW.noise,
+                         mzdiff = centW.mzdiff,
+                         verbose.columns = centW.verbose.columns,
+                         snthresh = centW.snthresh,
+                         integrate = centW.integrate,
+                         prefilter = centW.prefilter,
+                         mzCenterFun = centW.mzCenterFun,
+                         #                 sleep = centW.sleep
+                         BPPARAM = bpparam()
 )
-)
-
-system.time(
-  xset_centWave_par <- xcmsSet(mzXML_files,
-                           method = "centWave",
-                           profparam = centW.profparam,
-                           ppm = centW.ppm,
-                           peakwidth = c(centW.min_peakwidth,centW.max_peakwidth),
-                           fitgauss = centW.fitgauss,
-                           noise = centW.noise,
-                           mzdiff = centW.mzdiff,
-                           verbose.columns = centW.verbose.columns,
-                           snthresh = centW.snthresh,
-                           integrate = centW.integrate,
-                           prefilter = centW.prefilter,
-                           mzCenterFun = centW.mzCenterFun,
-                           #                 sleep = centW.sleep
-                           BPPARAM = core_param
-  )
-)
-
 print(paste0("xcmsSet object xset_centWave created:"))
-
 print(xset_centWave)
-save(xset_centWave_par, file = "xset_CentWave_par")
-#Conclude xcmsSet object creation, saved as xset_CentWave
+#Conclude xcmsSet object creation
 
 
 # Retention time correction and grouping ----
-load("xset_CentWave")
 
 loess.missing = 1
 loess.extra = 1
@@ -264,7 +237,6 @@ xset_gr = group(xset_centWave,
                 max = density.max,
                 sleep = density.sleep
 )
-rm(xset_centWave)
 
 # Correct the retention times based on groupings
 xset_gr.ret = retcor(xset_gr,
@@ -276,7 +248,6 @@ xset_gr.ret = retcor(xset_gr,
                      plottype = loess.plottype,
                      col = NULL,
                      ty = NULL)
-rm(xset_gr)
 
 # Group for the second time
 xset_gr.ret.rg = group(xset_gr.ret,
@@ -288,21 +259,14 @@ xset_gr.ret.rg = group(xset_gr.ret,
                        max = density.max,
                        sleep = density.sleep
 )
-save(xset_gr.ret.rg, file="xset_gr.ret.rg")
-rm("xset_gr.ret")
 
 # Fill in missing peaks ----
-# Begin peak filling
-
-load("xset_gr.ret.rg")
 xset_gr.ret.rg.fill = fillPeaks.chrom(xset_gr.ret.rg, BPPARAM = bpparam())
 
-save(xset_gr.ret.rg.fill, file = "xset_gr.ret.rg.fill")
-rm(xset_gr.ret.rg)
+
+
 
 # CAMERA ----
-load("xset_gr.ret.rg.fill")
-
 imports = parent.env(getNamespace("CAMERA"))
 unlockBinding("groups", imports)
 imports[["groups"]] = xcms::groups
@@ -351,19 +315,13 @@ xset_a = annotate(xset_gr.ret.rg.fill,
                   mzabs=0.0015
                   
 )
-rm(xset_gr.ret.rg.fill)
-
-save(xset_a, file = "prepCompletedxsA")
-load("prepCompletedxsA")
 
 # LOBSTAHS ----
 data(default.LOBdbase)
 
-LOB <- doLOBscreen(xsA=xset_a, polarity = "positive", match.ppm = 2.5, 
+LOB <- doLOBscreen(xsA=xset_a, polarity = subset.polarity, match.ppm = 2.5, 
                    retain.unidentified = F, rt.restrict = T)
 
 LOBscreen_diagnostics(LOB)
 LOBdata <- getLOBpeaklist(LOB) 
 write.csv(LOBdata, file = "LOB_Peaklist_Pos.csv")
-
-rm(xset_a, LOB, default.LOBdbase)
