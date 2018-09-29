@@ -2,7 +2,7 @@
 
 #Remember, must be run in Windows
 #Set working directory to where the files are
-setwd("D:/6a_TLE_ESI_2/")
+setwd("D:/6a_TLE_ESI/")
 
 #Assumes Raw files are in a folder named "Raw" within WD
 
