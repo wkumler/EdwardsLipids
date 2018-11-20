@@ -1,4 +1,4 @@
-#01_Extract_Raw_to_mzXML.R
+#01_Extract_Raw_to_mzXML_Parallel.R
 
 #Remember, must be run in Windows
 #Set working directory to where the files are
@@ -12,9 +12,11 @@ setwd("D:/6a_TLE_ESI/")
 #  mzXML_neg/          (extracted negative mode data)
 
 library(parallel)
+library(BiocParallel)
 
 useful_cores <- detectCores()-1
-cl <- makeCluster(useful_cores)
+param <- SnowParam(workers = useful_cores)
+register(param)
 
 #Get a list of all the raw file names
 raw_files <- list.files("Raw")
@@ -35,8 +37,7 @@ extractEverything <- function(file_name) {
 # Time difference: 1.4 mins
 
 init <- Sys.time()
-parLapply(cl = cl, X = sample_names, fun = extractEverything)
-stopCluster(cl)
+bplapply(X = sample_names, FUN = extractEverything)
 print(Sys.time()-init)
 # Time difference of 1.05 mins
 # Time difference of 0.98 mins

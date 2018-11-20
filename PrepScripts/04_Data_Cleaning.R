@@ -5,8 +5,6 @@
 # Startup things ----
 library(dplyr)
 
-setwd("C:/Users/willi/Documents/Berkeley/Elab/SURFIN")
-
 stations <- read.csv("Data/Clean_Stations.csv", stringsAsFactors = F, row.names = NULL)
 
 
